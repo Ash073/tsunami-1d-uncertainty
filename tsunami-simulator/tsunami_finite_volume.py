@@ -14,7 +14,7 @@ g = 9.81
 # ============================================================
 
 L = 100_000.0
-dx = 50.0
+dx = 12.5
 
 x = np.arange(0.0, L + dx, dx)
 N = len(x)
@@ -490,7 +490,7 @@ gauge_positions = np.array([
     60_000.0,
     70_000.0,
     80_000.0,
-    90_000.0
+    85_000.0
 ])
 
 gauge_indices = [
@@ -588,57 +588,165 @@ for step in range(num_steps + 1):
 
 
 # ============================================================
-# 11. GAUGE AMPLITUDE ANALYSIS
+# 11. INCIDENT-PULSE ANALYSIS
 # ============================================================
 
-reference_position = gauge_positions[0]
+# Estimate travel time from the initial wave location
+# to each gauge using the local shallow-water speed:
+#
+#     c(x) = sqrt(g h(x))
+#
+# Travel time:
+#
+#     T = integral(dx / c(x))
 
-reference_signal = np.array(
-    gauge_history[reference_position]
+local_speed = np.sqrt(
+    g * depth
 )
 
-reference_amplitude = np.max(
-    np.abs(reference_signal)
+travel_time = np.zeros_like(x)
+
+for i in range(1, N):
+
+    travel_time[i] = (
+        travel_time[i - 1]
+        + 0.5
+        * (
+            1.0 / local_speed[i - 1]
+            + 1.0 / local_speed[i]
+        )
+        * dx
+    )
+
+
+# Interpolate expected arrival time at each gauge
+expected_arrival_times = np.interp(
+    gauge_positions,
+    x,
+    travel_time
+)
+
+# Correct travel time so that it starts at x0
+initial_travel_time = np.interp(
+    x0,
+    x,
+    travel_time
+)
+
+expected_arrival_times -= (
+    initial_travel_time
 )
 
 
-print()
-print("==========================================")
-print("       WAVE GAUGE ANALYSIS")
-print("==========================================")
-
-print(
-    f"Reference gauge: "
-    f"{reference_position / 1000:.0f} km"
-)
-
-print(
-    f"Reference amplitude: "
-    f"{reference_amplitude:.6f} m"
-)
-
-print()
-
-print(
-    "Position (km) | Depth (m) | "
-    "Max |eta| (m) | Amplification"
-)
-
-print("-" * 60)
-
+# ------------------------------------------------------------
+# Find the first incident pulse
+# ------------------------------------------------------------
 
 gauge_amplitudes = []
-gauge_depths = []
+gauge_arrival_times = []
 
-for position in gauge_positions:
+for position, expected_time in zip(
+    gauge_positions,
+    expected_arrival_times
+):
 
     signal = np.array(
         gauge_history[position]
     )
 
-    maximum_amplitude = np.max(
-        np.abs(signal)
+    times = np.array(
+        time_history
     )
+
+    # Search only around the expected arrival.
+    #
+    # This avoids accidentally measuring a later reflected
+    # wave as the "maximum tsunami amplitude".
+    window_half_width = 200.0
+
+    window = (
+        (times >= expected_time - window_half_width)
+        &
+        (times <= expected_time + window_half_width)
+    )
+
+    window_indices = np.where(window)[0]
+
+    if len(window_indices) == 0:
+        raise RuntimeError(
+            f"No arrival window found for "
+            f"gauge at {position / 1000:.1f} km"
+        )
+
+    local_index = window_indices[
+        np.argmax(
+            signal[window_indices]
+        )
+    ]
+
+    incident_amplitude = (
+        signal[local_index]
+    )
+
+    incident_arrival_time = (
+        times[local_index]
+    )
+
+    gauge_amplitudes.append(
+        incident_amplitude
+    )
+
+    gauge_arrival_times.append(
+        incident_arrival_time
+    )
+
+
+gauge_amplitudes = np.array(
+    gauge_amplitudes
+)
+
+gauge_arrival_times = np.array(
+    gauge_arrival_times
+)
+
+
+# ------------------------------------------------------------
+# Relative amplification
+# ------------------------------------------------------------
+
+reference_amplitude = (
+    gauge_amplitudes[0]
+)
+
+amplification_factors = (
+    gauge_amplitudes
+    / reference_amplitude
+)
+
+
+# ============================================================
+# RESULTS
+# ============================================================
+
+print()
+print("==========================================")
+print("       INCIDENT-PULSE ANALYSIS")
+print("==========================================")
+
+print(
+    "Position | Depth | Expected t | "
+    "Peak t | Peak eta | Amplification"
+)
+
+print("-" * 80)
+
+for position, expected_time, arrival_time, amplitude_value, amplification in zip(
+    gauge_positions,
+    expected_arrival_times,
+    gauge_arrival_times,
+    gauge_amplitudes,
+    amplification_factors
+):
 
     gauge_depth = np.interp(
         position,
@@ -646,24 +754,13 @@ for position in gauge_positions:
         depth
     )
 
-    amplification = (
-        maximum_amplitude
-        / reference_amplitude
-    )
-
-    gauge_amplitudes.append(
-        maximum_amplitude
-    )
-
-    gauge_depths.append(
-        gauge_depth
-    )
-
     print(
-        f"{position / 1000:10.0f} | "
-        f"{gauge_depth:9.2f} | "
-        f"{maximum_amplitude:13.6f} | "
-        f"{amplification:13.4f}x"
+        f"{position / 1000:7.0f} km | "
+        f"{gauge_depth:5.0f} m | "
+        f"{expected_time:10.1f} s | "
+        f"{arrival_time:7.1f} s | "
+        f"{amplitude_value:9.5f} m | "
+        f"{amplification:10.4f}x"
     )
 
 print("==========================================")
@@ -772,6 +869,87 @@ plt.title(
     "Wave Amplification Over Variable Bathymetry"
 )
 
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+# ============================================================
+# 16. GREEN'S-LAW COMPARISON
+# ============================================================
+
+green_amplification = (
+    depth[[
+        np.argmin(np.abs(x - position))
+        for position in gauge_positions
+    ]]
+)
+
+green_amplification = (
+    200.0 / green_amplification
+) ** 0.25
+
+
+print()
+print("==========================================")
+print("      GREEN'S-LAW COMPARISON")
+print("==========================================")
+
+print(
+    "Position (km) | Depth (m) | "
+    "Simulated | Green's law"
+)
+
+print("-" * 60)
+
+for position, simulated, theoretical in zip(
+    gauge_positions,
+    amplification_factors,
+    green_amplification
+):
+
+    gauge_depth = np.interp(
+        position,
+        x,
+        depth
+    )
+
+    print(
+        f"{position / 1000:10.0f} | "
+        f"{gauge_depth:9.2f} | "
+        f"{simulated:9.4f}x | "
+        f"{theoretical:9.4f}x"
+    )
+
+print("==========================================")
+
+# ============================================================
+# 17. SIMULATED VS GREEN'S-LAW AMPLIFICATION
+# ============================================================
+
+plt.figure(figsize=(10, 5))
+
+plt.plot(
+    gauge_positions / 1000.0,
+    amplification_factors,
+    marker="o",
+    label="Finite-volume simulation"
+)
+
+plt.plot(
+    gauge_positions / 1000.0,
+    green_amplification,
+    marker="s",
+    linestyle="--",
+    label="Green's-law reference"
+)
+
+plt.xlabel("Distance (km)")
+plt.ylabel("Relative amplification")
+plt.title(
+    "Simulated Shoaling vs Green's-Law Reference"
+)
+
+plt.legend()
 plt.grid()
 plt.tight_layout()
 plt.show()
