@@ -29,7 +29,7 @@ N = len(x)
 # 3. CONSTANT WATER DEPTH
 # ============================================================
 
-h0 = 100.0
+h0 = 50.0
 
 
 # ============================================================
@@ -39,7 +39,7 @@ h0 = 100.0
 # Start with a small amplitude so that we are testing
 # the nearly-linear limit.
 
-amplitude = 0.01
+amplitude = 1.0
 
 x0 = 20_000.0
 sigma = 2_000.0
@@ -438,7 +438,7 @@ def advance_rk2(U, dt, dx):
 
 CFL_target = 0.4
 
-total_time = 1000.0
+total_time = 3400.0
 
 time = 0.0
 
@@ -449,6 +449,30 @@ snapshot_times = np.arange(
 )
 
 snapshots = {}
+
+# ============================================================
+# WAVE GAUGES
+# ============================================================
+
+gauge_positions = np.array([
+    70_000.0,
+    80_000.0,
+    90_000.0
+])
+
+gauge_indices = [
+    np.argmin(
+        np.abs(x - position)
+    )
+    for position in gauge_positions
+]
+
+gauge_history = {
+    position: []
+    for position in gauge_positions
+}
+
+time_history = []
 
 peak_time_history = []
 peak_position_history = []
@@ -507,6 +531,23 @@ while time <= total_time:
     )
 
     time += dt
+
+    # --------------------------------------------------------
+    # Record wave-gauge measurements
+    # --------------------------------------------------------
+
+    eta_current = U[0] - h0
+
+    for position, index in zip(
+        gauge_positions,
+        gauge_indices
+    ):
+
+        gauge_history[position].append(
+            eta_current[index]
+        )
+
+    time_history.append(time)
 
     # --------------------------------------------------------
     # Track the main right-going wave
@@ -680,4 +721,90 @@ plt.grid()
 
 plt.tight_layout()
 
+plt.show()
+
+# ============================================================
+# CONSTANT-DEPTH MUSCL CONTROL
+# ============================================================
+
+gauge_amplitudes = []
+
+for position in gauge_positions:
+
+    signal = np.array(
+        gauge_history[position]
+    )
+
+    maximum_amplitude = np.max(
+        np.abs(signal)
+    )
+
+    gauge_amplitudes.append(
+        maximum_amplitude
+    )
+
+gauge_amplitudes = np.array(
+    gauge_amplitudes
+)
+
+relative_amplitudes = (
+    gauge_amplitudes
+    / gauge_amplitudes[0]
+)
+
+
+print()
+print("==========================================")
+print("        MUSCL CONSTANT-DEPTH CONTROL")
+print("==========================================")
+
+print(
+    "Position (km) | "
+    "Max |eta| (m) | "
+    "Relative amplitude"
+)
+
+print("-" * 60)
+
+for position, amplitude_value, relative in zip(
+    gauge_positions,
+    gauge_amplitudes,
+    relative_amplitudes
+):
+
+    print(
+        f"{position / 1000:13.0f} | "
+        f"{amplitude_value:13.6f} | "
+        f"{relative:18.4f}x"
+    )
+
+print("==========================================")
+
+# ============================================================
+# GAUGE TIME SERIES
+# ============================================================
+
+plt.figure(figsize=(12, 6))
+
+for position in gauge_positions:
+
+    plt.plot(
+        np.array(time_history),
+        np.array(
+            gauge_history[position]
+        ),
+        label=f"{position / 1000:.0f} km"
+    )
+
+plt.xlabel("Time (s)")
+plt.ylabel("Surface displacement η (m)")
+
+plt.title(
+    "MUSCL Constant-Depth Control"
+)
+
+plt.legend()
+plt.grid()
+
+plt.tight_layout()
 plt.show()
