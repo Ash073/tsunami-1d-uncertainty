@@ -2,6 +2,75 @@
 
 A research-oriented 1D nonlinear shallow-water model for studying tsunami-wave propagation, shoaling, uncertainty propagation, and sensitivity to uncertain bathymetric parameters.
 
+
+## Visual gallery
+
+The figures below show the simulated wave, the idealized bathymetry, and the uncertainty/sensitivity results. The animated 3D-style ribbon is a visualization of a **1D** simulation: its display-width axis is illustrative, and the wave elevation is visually exaggerated. It is **not** a 3D fluid solver.
+
+### Wave propagation
+
+<p align="center">
+  <a href="tsunami-simulator/uq_outputs/virtual_lab/virtual_tsunami_3d.gif">
+    <img src="tsunami-simulator/uq_outputs/virtual_lab/virtual_tsunami_3d.gif" alt="Animated 3D-style visualization of the simulated 1D tsunami wave over the bathymetry" width="92%">
+  </a>
+</p>
+<p align="center"><em>Wave evolution over the idealized seafloor. Click the animation to open the original GIF.</em></p>
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <strong>3D-style snapshot</strong><br>
+      <a href="tsunami-simulator/uq_outputs/virtual_lab/virtual_tsunami_3d_snapshot.png"><img src="tsunami-simulator/uq_outputs/virtual_lab/virtual_tsunami_3d_snapshot.png" alt="Static 3D-style wave and bathymetry snapshot" width="100%"></a>
+    </td>
+    <td width="50%" align="center">
+      <strong>Space-time wave elevation</strong><br>
+      <a href="tsunami-simulator/uq_outputs/virtual_lab/space_time_wave.png"><img src="tsunami-simulator/uq_outputs/virtual_lab/space_time_wave.png" alt="Space-time diagram showing wave elevation along the domain over time" width="100%"></a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <strong>Gauge time series</strong><br>
+      <a href="tsunami-simulator/uq_outputs/virtual_lab/gauge_timeseries.png"><img src="tsunami-simulator/uq_outputs/virtual_lab/gauge_timeseries.png" alt="Wave elevation over time at the 40 km and 80 km gauges" width="100%"></a>
+    </td>
+    <td width="50%" align="center">
+      <strong>Bathymetry profile</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/01_bathymetry_profile.png"><img src="tsunami-simulator/uq_outputs/final_figures/01_bathymetry_profile.png" alt="Idealized deep-water, sloping-bed, and shallow-water bathymetry" width="100%"></a>
+    </td>
+  </tr>
+</table>
+
+### Uncertainty and sensitivity results
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <strong>Amplification distribution</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/02_amplification_distribution.png"><img src="tsunami-simulator/uq_outputs/final_figures/02_amplification_distribution.png" alt="Distribution of wave amplification from the multivariate Monte Carlo experiment" width="100%"></a>
+    </td>
+    <td width="50%" align="center">
+      <strong>Deep-water depth</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/03_deep_depth_vs_amplification.png"><img src="tsunami-simulator/uq_outputs/final_figures/03_deep_depth_vs_amplification.png" alt="Relationship between deep-water depth and wave amplification" width="100%"></a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <strong>Shallow-water depth</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/04_shallow_depth_vs_amplification.png"><img src="tsunami-simulator/uq_outputs/final_figures/04_shallow_depth_vs_amplification.png" alt="Relationship between shallow-water depth and wave amplification" width="100%"></a>
+    </td>
+    <td width="50%" align="center">
+      <strong>Slope-end position</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/05_slope_end_vs_amplification.png"><img src="tsunami-simulator/uq_outputs/final_figures/05_slope_end_vs_amplification.png" alt="Relationship between bathymetric slope-end position and wave amplification" width="100%"></a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <strong>Global sensitivity ranking</strong><br>
+      <a href="tsunami-simulator/uq_outputs/final_figures/06_sensitivity_ranking.png"><img src="tsunami-simulator/uq_outputs/final_figures/06_sensitivity_ranking.png" alt="Sensitivity ranking for slope-end position, shallow-water depth, and deep-water depth" width="78%"></a>
+    </td>
+  </tr>
+</table>
+
+
 ## Project objective
 
 The project investigates how uncertainty in idealized bathymetry affects modeled wave amplification at a fixed downstream gauge.
@@ -153,16 +222,12 @@ For the synthetic uncertainty ranges used here, slope-end position is the domina
 
 ## Outputs
 
-The uncertainty and sensitivity experiments write data and figures to:
-
-```text
-uq_outputs/
-```
+When the scripts are run from the `tsunami-simulator/` source directory, the uncertainty and sensitivity experiments write data and figures under `tsunami-simulator/uq_outputs/` in the repository.
 
 Important outputs include:
 
 ```text
-uq_outputs/
+tsunami-simulator/uq_outputs/
 ├── uq_results_multivariate.csv
 ├── scatter_deep_depth.png
 ├── scatter_shallow_depth.png
@@ -184,13 +249,22 @@ Python interpreter used during development:
 C:\Python313\python.exe
 ```
 
-Install dependencies:
+Install dependencies from the repository root:
 
 ```powershell
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Examples:
+Launch the interactive dashboard:
+
+```powershell
+cd tsunami-simulator
+python -m streamlit run tsunami_dashboard.py
+```
+
+Then open `http://localhost:8501` in your browser. Keep `tsunami_dashboard.py` and `tsunami_virtual_lab.py` in the same source directory.
+
+Run the numerical experiment scripts from `tsunami-simulator/` as needed:
 
 ```powershell
 python tsunami_muscl_bathymetry.py
